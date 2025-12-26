@@ -45,6 +45,8 @@ const handleGeminiError = (error: any): never => {
     message = "Authentication Failed: Please check your API Key in Settings.";
   } else if (message.includes("Requested entity was not found")) {
     message = "PROJECT_NOT_FOUND: Please provide a valid API key in settings.";
+  } else if (message.includes("Budget 0 is invalid")) {
+    message = "Model Configuration Error: This model requires thinking mode.";
   }
 
   throw new Error(message);
@@ -80,7 +82,7 @@ export const analyzeGarment = async (
       },
       config: {
         systemInstruction: instruction,
-        thinkingConfig: { thinkingBudget: 0 }
+        // Removed thinkingBudget: 0 to fix INVALID_ARGUMENT error
       }
     }));
     return response.text;
