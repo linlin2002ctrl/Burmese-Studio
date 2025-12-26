@@ -12,6 +12,16 @@ export const TRANSLATIONS: Translations = {
   settings: { en: "Settings", mm: "ဆက်တင်များ" },
   apiSettings: { en: "API Configuration", mm: "API ကီး ပြင်ဆင်ရန်" },
   apiKeyHint: { en: "Your key is stored locally on this device.", mm: "သင့်၏ API ကီးကို သင့်ဖုန်းထဲတွင်သာ သိမ်းဆည်းထားပါမည်။" },
+  
+  // Guide
+  apiKeyGuideTitle: { en: "How to get a Free API Key", mm: "အခမဲ့ API Key ရယူနည်းလမ်းညွှန်" },
+  guideStep1: { en: "1. Visit Google AI Studio", mm: "၁။ Google AI Studio သို့ သွားရောက်ပါ။" },
+  guideStep2: { en: "2. Click 'Get API Key'", mm: "၂။ 'Get API Key' ခလုတ်ကို နှိပ်ပါ။" },
+  guideStep3: { en: "3. Create key in new project", mm: "၃။ Project အသစ်တစ်ခုလုပ်ပြီး Key ယူပါ။" },
+  guideStep4: { en: "4. Copy & paste here", mm: "၄။ Key ကိုကူးယူပြီး ဤနေရာတွင် ထည့်ပါ။" },
+  useDemoKey: { en: "Use Provided Demo Key", mm: "စမ်းသပ်ရန် Demo Key သုံးမည်" },
+  getYourKey: { en: "Get your key here", mm: "Key ရယူရန် နှိပ်ပါ" },
+
   networkSettings: { en: "Network Settings", mm: "ကွန်ရက် ဆက်တင်များ" },
   proxyUrl: { en: "Proxy Base URL", mm: "ပရောက်စီ URL" },
   proxyPlaceholder: { en: "https://sg-proxy.fashion.ai/v1beta", mm: "https://sg-proxy.fashion.ai/v1beta" },

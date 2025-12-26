@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Sun, Moon, Send, Sparkles, ChevronRight, Copy, Check, Loader2, Camera, X, AlertCircle, ArrowDownToLine, FileText, Settings, Search, RefreshCcw, MessageSquare, ListChecks, Key, ExternalLink, Globe, ShieldCheck, Zap, Lock
+  Sun, Moon, Send, Sparkles, ChevronRight, Copy, Check, Loader2, Camera, X, AlertCircle, ArrowDownToLine, FileText, Settings, Search, RefreshCcw, MessageSquare, ListChecks, Key, ExternalLink, Globe, ShieldCheck, Zap, Lock, HelpCircle
 } from 'lucide-react';
 import { AppState, Message, Language, Step } from './types';
 import { TRANSLATIONS, KEYWORD_LABELS } from './constants';
@@ -10,6 +10,7 @@ import FileUpload from './components/FileUpload';
 import { GoogleGenAI } from "@google/genai";
 
 const SG_PROXY_URL = "https://sg-gateway.burmese-studio.ai/v1beta";
+const DEMO_KEY = "AIzaSyB0EKDp_jRop2EF9nYtkPdTpAWYg5TKnsM";
 
 const stripBase64 = (dataUrl: string | null) => {
   if (!dataUrl) return null;
@@ -48,6 +49,7 @@ const App: React.FC = () => {
   
   const [chatInput, setChatInput] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,6 +71,10 @@ const App: React.FC = () => {
   const toggleSingaporeProxy = () => {
     const newUrl = state.proxyUrl === SG_PROXY_URL ? "" : SG_PROXY_URL;
     setState(prev => ({ ...prev, proxyUrl: newUrl }));
+  };
+
+  const setDemoKey = () => {
+    setState(prev => ({ ...prev, apiKey: DEMO_KEY }));
   };
 
   const handleError = (e: any) => {
@@ -210,7 +216,7 @@ const App: React.FC = () => {
         {state.isSettingsOpen && (
           <div className="fixed inset-0 z-[100] flex justify-end">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setState(prev => ({...prev, isSettingsOpen: false}))} />
-            <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 h-full shadow-2xl animate-slide-in-right p-6 flex flex-col gap-8 overflow-y-auto">
+            <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 h-full shadow-2xl animate-slide-in-right p-6 flex flex-col gap-6 overflow-y-auto">
               <div className="flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Settings className="w-5 h-5 text-zinc-400" />
@@ -224,10 +230,35 @@ const App: React.FC = () => {
               <div className="space-y-8 flex-1">
                 {/* API Key Section */}
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-brand-500">
-                    <Key size={18} />
-                    <h3 className="font-bold uppercase text-xs tracking-widest">{t('apiSettings')}</h3>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-brand-500">
+                        <Key size={18} />
+                        <h3 className="font-bold uppercase text-xs tracking-widest">{t('apiSettings')}</h3>
+                    </div>
+                    <button onClick={() => setShowGuide(!showGuide)} className="flex items-center gap-1 text-[10px] bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-full text-zinc-500 hover:text-brand-500 transition-colors">
+                        <HelpCircle size={12} /> {showGuide ? 'Hide Guide' : 'Get Key?'}
+                    </button>
                   </div>
+                  
+                  {/* API Key Guide */}
+                  {showGuide && (
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl text-xs space-y-2 border border-zinc-100 dark:border-zinc-800 animate-fade-in">
+                        <h4 className="font-bold mb-1">{t('apiKeyGuideTitle')}</h4>
+                        <p>{t('guideStep1')}</p>
+                        <p>{t('guideStep2')}</p>
+                        <p>{t('guideStep3')}</p>
+                        <p>{t('guideStep4')}</p>
+                        <div className="pt-2 flex gap-2">
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" className="flex-1 bg-brand-500 text-white text-center py-2 rounded-lg font-bold hover:bg-brand-600 transition-colors flex items-center justify-center gap-1">
+                                {t('getYourKey')} <ExternalLink size={10} />
+                            </a>
+                            <button onClick={setDemoKey} className="flex-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-white text-center py-2 rounded-lg font-bold hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors">
+                                {t('useDemoKey')}
+                            </button>
+                        </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <label className="text-sm font-semibold block">{t('apiKeyLabel')}</label>
                     <div className="relative">
