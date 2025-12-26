@@ -1,0 +1,5 @@
+{
+  "name": "Burmese Studio",
+  "description": "A bilingual (English/Myanmar) AI Fashion Partner for planning and generating fashion shoots using Google Gemini.",
+  "requestFramePermissions": []
+}
