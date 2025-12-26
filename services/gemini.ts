@@ -40,7 +40,7 @@ const handleGeminiError = (error: any): never => {
   let message = error instanceof Error ? error.message : "An unknown error occurred.";
   
   if (message.includes("429")) {
-    message = "Rate Limit Exceeded: Please wait a moment or check your API quota.";
+    message = "Rate Limit Exceeded: We've switched to Flash models, but please try again in a moment.";
   } else if (message.includes("403") || message.includes("API key")) {
     message = "Authentication Failed: Please check your API Key in Settings.";
   } else if (message.includes("Requested entity was not found")) {
@@ -73,7 +73,7 @@ export const analyzeGarment = async (
 
   try {
     const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: "gemini-2.0-flash",
       contents: {
         parts: [
             { inlineData: { mimeType: "image/jpeg", data: base64Image } },
@@ -82,7 +82,6 @@ export const analyzeGarment = async (
       },
       config: {
         systemInstruction: instruction,
-        // Removed thinkingBudget: 0 to fix INVALID_ARGUMENT error
       }
     }));
     return response.text;
@@ -110,7 +109,7 @@ export const generateKeywords = async (
   
     try {
       const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-        model: "gemini-3-pro-preview",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -139,7 +138,7 @@ export const regenerateSingleKeyword = async (
 
   try {
     const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
     }));
     return response.text?.trim() || currentKeyword;
@@ -162,7 +161,7 @@ export const summarizeChat = async (
 
   try {
     const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: "gemini-2.0-flash",
       contents: `Conversation History:\n${historyText}\n\nTask: ${instruction}`,
     }));
     return response.text;
@@ -193,25 +192,20 @@ export const generateFashionImage = async (
     { inlineData: { mimeType: "image/jpeg", data: garment } }
   ];
   keywordImages.forEach((img, idx) => { if (img) imageParts.push({ text: `Ref: ${KEYWORD_LABELS['en'][idx]}`, inlineData: { mimeType: "image/jpeg", data: img } }); });
-  imageParts.push({ text: `Generate a photorealistic fashion editorial. Style: ${chatContext}. Accessories: ${accessories}. 2K Resolution, high quality.` });
+  imageParts.push({ text: `Generate a photorealistic fashion editorial. Style: ${chatContext}. Accessories: ${accessories}.` });
 
   try {
     const textResponse: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-        model: "gemini-3-pro-preview",
+        model: "gemini-2.0-flash",
         contents: { parts: textParts },
     }));
 
-    await delay(2000); 
+    await delay(1000); 
 
     const imageResponse: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-        model: "gemini-3-pro-image-preview",
+        model: "gemini-2.5-flash-image",
         contents: { parts: imageParts },
-        config: {
-          imageConfig: {
-            aspectRatio: "3:4",
-            imageSize: "2K"
-          }
-        }
+        // removed imageConfig as standard flash image models typically auto-configure or have different params
     }));
     
     let finalImageBase64 = null;
