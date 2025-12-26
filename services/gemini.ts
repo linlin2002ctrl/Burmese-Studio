@@ -14,7 +14,7 @@ const getGeminiClient = (apiKey: string, proxyUrl?: string) => {
   });
 };
 
-async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 5): Promise<T> {
   let lastError: any;
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -22,10 +22,12 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
     } catch (error: any) {
       lastError = error;
       const errorMsg = error.message || "";
-      const isRateLimit = errorMsg.includes("429") || errorMsg.toLowerCase().includes("too many requests");
+      const isRateLimit = errorMsg.includes("429") || errorMsg.toLowerCase().includes("too many requests") || errorMsg.includes("RESOURCE_EXHAUSTED");
       
       if (isRateLimit && i < maxRetries - 1) {
-        const waitTime = Math.pow(2, i + 1) * 1000;
+        // Exponential backoff: 2s, 4s, 8s, 16s...
+        const waitTime = Math.pow(2, i + 1) * 1000; 
+        console.warn(`Rate limit hit. Retrying in ${waitTime/1000}s...`);
         await delay(waitTime);
         continue;
       }
@@ -39,8 +41,8 @@ const handleGeminiError = (error: any): never => {
   console.error("Gemini API Error:", error);
   let message = error instanceof Error ? error.message : "An unknown error occurred.";
   
-  if (message.includes("429")) {
-    message = "Rate Limit Exceeded: We've switched to Flash models, but please try again in a moment.";
+  if (message.includes("429") || message.includes("RESOURCE_EXHAUSTED")) {
+    message = "Rate Limit Exceeded: The free API key is busy. Please wait 1 minute and try again.";
   } else if (message.includes("403") || message.includes("API key")) {
     message = "Authentication Failed: Please check your API Key in Settings.";
   } else if (message.includes("Requested entity was not found")) {
@@ -72,8 +74,9 @@ export const analyzeGarment = async (
   }
 
   try {
+    // Used gemini-3-flash-preview for analysis (Basic Text Task + Image)
     const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: {
         parts: [
             { inlineData: { mimeType: "image/jpeg", data: base64Image } },
@@ -108,8 +111,9 @@ export const generateKeywords = async (
     Return ONLY a JSON array of 8 strings.`;
   
     try {
+      // Used gemini-3-flash-preview for structured data extraction
       const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -138,7 +142,7 @@ export const regenerateSingleKeyword = async (
 
   try {
     const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
     }));
     return response.text?.trim() || currentKeyword;
@@ -161,7 +165,7 @@ export const summarizeChat = async (
 
   try {
     const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: `Conversation History:\n${historyText}\n\nTask: ${instruction}`,
     }));
     return response.text;
@@ -195,17 +199,18 @@ export const generateFashionImage = async (
   imageParts.push({ text: `Generate a photorealistic fashion editorial. Style: ${chatContext}. Accessories: ${accessories}.` });
 
   try {
+    // Generate Prompt with gemini-3-flash-preview
     const textResponse: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-3-flash-preview",
         contents: { parts: textParts },
     }));
 
     await delay(1000); 
 
+    // Generate Image with gemini-2.5-flash-image (General Image Generation Task)
     const imageResponse: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
         model: "gemini-2.5-flash-image",
         contents: { parts: imageParts },
-        // removed imageConfig as standard flash image models typically auto-configure or have different params
     }));
     
     let finalImageBase64 = null;

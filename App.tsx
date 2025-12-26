@@ -126,7 +126,7 @@ const App: React.FC = () => {
           baseUrl: state.proxyUrl || undefined
         });
         const chat = ai.chats.create({
-            model: "gemini-2.0-flash",
+            model: "gemini-3-flash-preview",
             history: state.chatHistory.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
             config: {
                 systemInstruction: lang === 'mm' ? "Respond in Burmese. You are a fashion producer." : "Respond in English. You are a fashion producer."
