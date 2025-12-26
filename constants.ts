@@ -10,6 +10,8 @@ export const TRANSLATIONS: Translations = {
   
   // Settings & BYOK
   settings: { en: "Settings", mm: "ဆက်တင်များ" },
+  apiSettings: { en: "API Configuration", mm: "API ကီး ပြင်ဆင်ရန်" },
+  apiKeyHint: { en: "Your key is stored locally on this device.", mm: "သင့်၏ API ကီးကို သင့်ဖုန်းထဲတွင်သာ သိမ်းဆည်းထားပါမည်။" },
   networkSettings: { en: "Network Settings", mm: "ကွန်ရက် ဆက်တင်များ" },
   proxyUrl: { en: "Proxy Base URL", mm: "ပရောက်စီ URL" },
   proxyPlaceholder: { en: "https://sg-proxy.fashion.ai/v1beta", mm: "https://sg-proxy.fashion.ai/v1beta" },
@@ -69,6 +71,13 @@ export const TRANSLATIONS: Translations = {
   masterPrompt: { en: "Master Prompt", mm: "အဓိက ညွှန်ကြားချက်" },
   copy: { en: "Copy", mm: "ကူးယူမည်" },
   copied: { en: "Copied!", mm: "ကူးယူပြီး!" },
+  
+  // General
+  next: { en: "Next", mm: "ရှေ့ဆက်" },
+  back: { en: "Back", mm: "ပြန်သွား" },
+  apiKeyLabel: { en: "Gemini API Key", mm: "Gemini API ကီး" },
+  apiKeyPlaceholder: { en: "Paste your API key here", mm: "API ကီးကို ဤနေရာတွင် ထည့်ပါ" },
+  required: { en: "Required", mm: "လိုအပ်သည်" },
 };
 
 export const KEYWORD_LABELS: { en: string[]; mm: string[] } = {

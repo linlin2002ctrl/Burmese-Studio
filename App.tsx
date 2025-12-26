@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Sun, Moon, Send, Sparkles, ChevronRight, Copy, Check, Loader2, Camera, X, AlertCircle, ArrowDownToLine, FileText, Settings, Search, RefreshCcw, MessageSquare, ListChecks, Key, ExternalLink, Globe, ShieldCheck, Zap
+  Sun, Moon, Send, Sparkles, ChevronRight, Copy, Check, Loader2, Camera, X, AlertCircle, ArrowDownToLine, FileText, Settings, Search, RefreshCcw, MessageSquare, ListChecks, Key, ExternalLink, Globe, ShieldCheck, Zap, Lock
 } from 'lucide-react';
 import { AppState, Message, Language, Step } from './types';
 import { TRANSLATIONS, KEYWORD_LABELS } from './constants';
@@ -19,14 +19,13 @@ const stripBase64 = (dataUrl: string | null) => {
 const App: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [lang, setLang] = useState<Language>('en');
-  const [hasKey, setHasKey] = useState<boolean>(false);
-  const [isCheckingKey, setIsCheckingKey] = useState(true);
 
   const [state, setState] = useState<AppState>(() => {
     const savedProxy = localStorage.getItem('burmese_studio_proxy') || '';
+    const savedKey = localStorage.getItem('burmese_studio_api_key') || '';
     return {
       step: 1,
-      apiKey: '',
+      apiKey: savedKey,
       proxyUrl: savedProxy,
       garmentImage: null,
       gender: null,
@@ -53,18 +52,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
-    
-    const checkKeyStatus = async () => {
-        try {
-            const selected = await (window as any).aistudio.hasSelectedApiKey();
-            setHasKey(selected);
-        } catch (e) {
-            console.warn("AI Studio key check unavailable", e);
-        } finally {
-            setIsCheckingKey(false);
-        }
-    };
-    checkKeyStatus();
   }, []);
 
   useEffect(() => {
@@ -79,15 +66,6 @@ const App: React.FC = () => {
 
   const t = (key: string) => TRANSLATIONS[key] ? TRANSLATIONS[key][lang] : key;
 
-  const handleSelectKey = async () => {
-    try {
-        await (window as any).aistudio.openSelectKey();
-        setHasKey(true); // Proceed assuming success per race condition rule
-    } catch (e) {
-        handleError(new Error("Key selection dialog could not be opened."));
-    }
-  };
-
   const toggleSingaporeProxy = () => {
     const newUrl = state.proxyUrl === SG_PROXY_URL ? "" : SG_PROXY_URL;
     setState(prev => ({ ...prev, proxyUrl: newUrl }));
@@ -95,30 +73,23 @@ const App: React.FC = () => {
 
   const handleError = (e: any) => {
     const msg = e instanceof Error ? e.message : "An unexpected error occurred.";
-    if (msg.includes("Requested entity was not found") || msg.includes("PROJECT_NOT_FOUND")) {
-        setHasKey(false);
-        setState(prev => ({ ...prev, isGenerating: false, error: "Please select a valid paid project API key." }));
-    } else {
-        setState(prev => ({ ...prev, isGenerating: false, error: msg }));
-    }
+    setState(prev => ({ ...prev, isGenerating: false, error: msg }));
     setTimeout(() => setState(prev => ({ ...prev, error: null })), 8000);
   };
 
   const saveSettings = () => {
     localStorage.setItem('burmese_studio_proxy', state.proxyUrl);
+    localStorage.setItem('burmese_studio_api_key', state.apiKey);
     setState(prev => ({ ...prev, isSettingsOpen: false }));
   };
 
   const startAnalysis = async () => {
-    if (!hasKey) {
-        await handleSelectKey();
-        return;
-    }
     if (!state.garmentImage || !state.gender) return;
     
     setState(prev => ({ ...prev, isGenerating: true, error: null }));
     try {
       const response = await GeminiService.analyzeGarment(
+        state.apiKey,
         stripBase64(state.garmentImage)!, 
         lang,
         state.gender,
@@ -144,7 +115,7 @@ const App: React.FC = () => {
     
     try {
         const ai = new GoogleGenAI({ 
-          apiKey: process.env.API_KEY || "",
+          apiKey: state.apiKey || process.env.API_KEY || "",
           // @ts-ignore
           baseUrl: state.proxyUrl || undefined
         });
@@ -165,7 +136,7 @@ const App: React.FC = () => {
   const generateKeywords = async () => {
     setState(prev => ({ ...prev, isGenerating: true, error: null }));
     try {
-        const keywords = await GeminiService.generateKeywords(state.chatHistory, lang, state.proxyUrl);
+        const keywords = await GeminiService.generateKeywords(state.apiKey, state.chatHistory, lang, state.proxyUrl);
         setState(prev => ({ ...prev, pinterestKeywords: keywords, isGenerating: false }));
     } catch (e) {
         handleError(e);
@@ -176,6 +147,7 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, loadingKeywordIndex: index, error: null }));
     try {
         const newKeyword = await GeminiService.regenerateSingleKeyword(
+            state.apiKey,
             state.chatHistory, 
             KEYWORD_LABELS['en'][index], 
             state.pinterestKeywords[index],
@@ -197,6 +169,7 @@ const App: React.FC = () => {
     try {
         const chatContext = state.chatHistory.map(m => `${m.role}: ${m.text}`).join('\n');
         const result = await GeminiService.generateFashionImage(
+            state.apiKey,
             stripBase64(state.garmentImage)!,
             state.keywordImages.map(img => stripBase64(img)),
             state.accessories,
@@ -220,7 +193,7 @@ const App: React.FC = () => {
     if (state.chatHistory.length === 0) return;
     setState(prev => ({ ...prev, isGenerating: true }));
     try {
-        const summary = await GeminiService.summarizeChat(state.chatHistory, lang, state.proxyUrl);
+        const summary = await GeminiService.summarizeChat(state.apiKey, state.chatHistory, lang, state.proxyUrl);
         setState(prev => ({ 
             ...prev, 
             accessories: (prev.accessories ? prev.accessories + '\n\n' : '') + "--- Final Plan ---\n" + summary,
@@ -231,44 +204,14 @@ const App: React.FC = () => {
     }
   };
 
-  if (isCheckingKey) return <div className="h-screen w-full flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin" /></div>;
-
-  if (!hasKey) {
-    return (
-        <div className="h-screen w-full flex flex-col items-center justify-center bg-white dark:bg-zinc-950 p-8 text-center space-y-10 animate-fade-in">
-            <div className="w-24 h-24 bg-brand-500/10 rounded-full flex items-center justify-center text-brand-500">
-                <Zap size={48} />
-            </div>
-            <div className="max-w-md space-y-4">
-                <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">{t('byokTitle')}</h1>
-                <p className="text-zinc-500 dark:text-zinc-400 leading-relaxed text-lg">{t('byokDesc')}</p>
-                <div className="pt-4 flex flex-col items-center gap-2">
-                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-brand-500 font-medium hover:underline text-sm">
-                        {t('billingInfo')} <ExternalLink size={14} />
-                    </a>
-                    {state.proxyUrl && <span className="text-[10px] bg-green-500/10 text-green-500 px-3 py-1 rounded-full font-bold uppercase tracking-wider">{t('proxyMode')}</span>}
-                </div>
-            </div>
-            <div className="flex flex-col gap-3 w-full max-w-xs">
-                <button onClick={handleSelectKey} className="w-full bg-zinc-900 text-white dark:bg-white dark:text-black px-12 py-4 rounded-full font-bold text-xl hover:scale-105 active:scale-95 transition-all shadow-xl">
-                    {t('selectKey')}
-                </button>
-                <button onClick={() => setState(prev => ({...prev, isSettingsOpen: true}))} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-sm font-medium py-2">
-                    {t('networkSettings')}
-                </button>
-            </div>
-        </div>
-    );
-  }
-
   return (
     <div className={`min-h-screen flex flex-col w-full mx-auto md:h-screen md:overflow-hidden bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-300 ${lang === 'mm' ? 'font-burmese' : 'font-sans'}`}>
         {/* Settings Overlay */}
         {state.isSettingsOpen && (
           <div className="fixed inset-0 z-[100] flex justify-end">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setState(prev => ({...prev, isSettingsOpen: false}))} />
-            <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 h-full shadow-2xl animate-slide-in-right p-6 flex flex-col gap-8">
-              <div className="flex items-center justify-between">
+            <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 h-full shadow-2xl animate-slide-in-right p-6 flex flex-col gap-8 overflow-y-auto">
+              <div className="flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Settings className="w-5 h-5 text-zinc-400" />
                   <h2 className="text-xl font-bold">{t('settings')}</h2>
@@ -278,7 +221,32 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-8 flex-1">
+                {/* API Key Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-brand-500">
+                    <Key size={18} />
+                    <h3 className="font-bold uppercase text-xs tracking-widest">{t('apiSettings')}</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold block">{t('apiKeyLabel')}</label>
+                    <div className="relative">
+                        <input 
+                        value={state.apiKey} 
+                        onChange={(e) => setState(prev => ({...prev, apiKey: e.target.value}))}
+                        placeholder={t('apiKeyPlaceholder')}
+                        type="password"
+                        className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-500 transition-all pr-10"
+                        />
+                        <Lock size={14} className="absolute right-3 top-3.5 text-zinc-400" />
+                    </div>
+                    <p className="text-[11px] text-zinc-500 leading-relaxed">
+                      {t('apiKeyHint')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Network Section */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-brand-500">
                     <Globe size={18} />
@@ -328,7 +296,7 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-auto">
+              <div className="mt-auto pt-6">
                 <button 
                   onClick={saveSettings}
                   className="w-full bg-zinc-900 text-white dark:bg-white dark:text-black py-4 rounded-full font-bold shadow-lg hover:scale-[1.02] transition-transform"

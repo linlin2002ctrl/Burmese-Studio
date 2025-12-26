@@ -4,10 +4,11 @@ import { SYSTEM_INSTRUCTION_EN, SYSTEM_INSTRUCTION_MM, KEYWORD_LABELS } from "..
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper to create client with the latest key from process.env and proxy settings
-const getGeminiClient = (proxyUrl?: string) => {
+// Helper to create client with the user's key (or env fallback) and proxy settings
+const getGeminiClient = (apiKey: string, proxyUrl?: string) => {
+  const keyToUse = apiKey && apiKey.trim() !== "" ? apiKey : (process.env.API_KEY || "");
   return new GoogleGenAI({ 
-    apiKey: process.env.API_KEY || "",
+    apiKey: keyToUse,
     // @ts-ignore - Handle base URL for proxying
     baseUrl: proxyUrl || undefined 
   });
@@ -41,21 +42,22 @@ const handleGeminiError = (error: any): never => {
   if (message.includes("429")) {
     message = "Rate Limit Exceeded: Please wait a moment or check your API quota.";
   } else if (message.includes("403") || message.includes("API key")) {
-    message = "Authentication Failed: Please ensure you have selected a valid API key from a paid project.";
+    message = "Authentication Failed: Please check your API Key in Settings.";
   } else if (message.includes("Requested entity was not found")) {
-    message = "PROJECT_NOT_FOUND: Please select a valid project API key in settings.";
+    message = "PROJECT_NOT_FOUND: Please provide a valid API key in settings.";
   }
 
   throw new Error(message);
 };
 
 export const analyzeGarment = async (
+  apiKey: string,
   base64Image: string,
   language: 'en' | 'mm',
   gender: 'male' | 'female' | 'unisex' | null,
   proxyUrl?: string
 ) => {
-  const ai = getGeminiClient(proxyUrl);
+  const ai = getGeminiClient(apiKey, proxyUrl);
   const instruction = language === 'mm' ? SYSTEM_INSTRUCTION_MM : SYSTEM_INSTRUCTION_EN;
 
   let prompt = "";
@@ -88,11 +90,12 @@ export const analyzeGarment = async (
 };
 
 export const generateKeywords = async (
+    apiKey: string,
     chatHistory: { role: string; text: string }[],
     language: 'en' | 'mm',
     proxyUrl?: string
   ) => {
-    const ai = getGeminiClient(proxyUrl);
+    const ai = getGeminiClient(apiKey, proxyUrl);
     const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join('\n');
     const prompt = `Based on the following conversation about a fashion shoot, generate a highly specific Pinterest search query (English) for EACH of the following 8 categories.
     
@@ -122,12 +125,13 @@ export const generateKeywords = async (
   };
 
 export const regenerateSingleKeyword = async (
+  apiKey: string,
   chatHistory: { role: string; text: string }[],
   category: string,
   currentKeyword: string,
   proxyUrl?: string
 ) => {
-  const ai = getGeminiClient(proxyUrl);
+  const ai = getGeminiClient(apiKey, proxyUrl);
   const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join('\n');
   const prompt = `Generate a NEW alternative Pinterest keyword for "${category}" based on this context: ${historyText}. Current: ${currentKeyword}. Return string only.`;
 
@@ -143,11 +147,12 @@ export const regenerateSingleKeyword = async (
 };
 
 export const summarizeChat = async (
+  apiKey: string,
   chatHistory: { role: string; text: string }[],
   language: 'en' | 'mm',
   proxyUrl?: string
 ) => {
-  const ai = getGeminiClient(proxyUrl);
+  const ai = getGeminiClient(apiKey, proxyUrl);
   const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join('\n');
   const instruction = language === 'mm' 
     ? "အတည်ပြုပြီးသော အချက်လက်များကိုသာ စာရင်းပြုစုပေးပါ။"
@@ -165,6 +170,7 @@ export const summarizeChat = async (
 };
 
 export const generateFashionImage = async (
+  apiKey: string,
   garment: string,
   keywordImages: (string | null)[],
   accessories: string,
@@ -172,7 +178,7 @@ export const generateFashionImage = async (
   chatContext: string,
   proxyUrl?: string
 ) => {
-  const ai = getGeminiClient(proxyUrl);
+  const ai = getGeminiClient(apiKey, proxyUrl);
   
   const textParts: any[] = [{ inlineData: { mimeType: "image/jpeg", data: garment } }];
   keywordImages.forEach((img) => { if (img) textParts.push({ inlineData: { mimeType: "image/jpeg", data: img } }); });
