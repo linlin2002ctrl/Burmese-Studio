@@ -1,3 +1,4 @@
+
 import { Translations } from './types';
 
 export const TRANSLATIONS: Translations = {
@@ -7,9 +8,27 @@ export const TRANSLATIONS: Translations = {
   step3: { en: "Assets", mm: "လိုအပ်ချက်များ" },
   step4: { en: "Studio", mm: "စတူဒီယို" },
   
-  // Settings
+  // Settings & BYOK
   settings: { en: "Settings", mm: "ဆက်တင်များ" },
-  save: { en: "Save", mm: "သိမ်းဆည်းမည်" },
+  networkSettings: { en: "Network Settings", mm: "ကွန်ရက် ဆက်တင်များ" },
+  proxyUrl: { en: "Proxy Base URL", mm: "ပရောက်စီ URL" },
+  proxyPlaceholder: { en: "https://sg-proxy.fashion.ai/v1beta", mm: "https://sg-proxy.fashion.ai/v1beta" },
+  proxyHint: { 
+    en: "Myanmar users: Use the Singapore proxy to connect without a VPN.", 
+    mm: "မြန်မာနိုင်ငံမှ အသုံးပြုသူများအတွက် VPN မလိုဘဲ အသုံးပြုနိုင်ရန် စင်ကာပူ ပရောက်စီကို အသုံးပြုပါ။" 
+  },
+  singaporeProxy: { en: "Singapore Proxy Server", mm: "စင်ကာပူ ပရောက်စီ ဆာဗာ" },
+  connectivityStatus: { en: "Connectivity Mode", mm: "ချိတ်ဆက်မှု အခြေအနေ" },
+  standardMode: { en: "Standard (Direct)", mm: "ပုံမှန် (တိုက်ရိုက်)" },
+  proxyMode: { en: "Proxy Active (SG)", mm: "ပရောက်စီ အသုံးပြုနေသည် (SG)" },
+  save: { en: "Save Settings", mm: "ဆက်တင်များ သိမ်းမည်" },
+  byokTitle: { en: "Professional Studio Access", mm: "ပရော်ဖက်ရှင်နယ် စတူဒီယို အသုံးပြုခွင့်" },
+  byokDesc: { 
+    en: "To generate high-quality 2K fashion editorials, please connect your own Google AI Studio key.", 
+    mm: "အရည်အသွေးမြင့် 2K ဖက်ရှင်ပုံများ ထုတ်ယူရန်အတွက် သင်၏ ကိုယ်ပိုင် Google AI Studio key ကို ချိတ်ဆက်ပေးပါ။" 
+  },
+  selectKey: { en: "Connect Studio Key", mm: "Key ချိတ်ဆက်မည်" },
+  billingInfo: { en: "Learn about billing & quotas", mm: "ငွေပေးချေမှုနှင့် ကန့်သတ်ချက်များအကြောင်း လေ့လာရန်" },
   
   // Step 1
   uploadGarment: { en: "Upload Garment", mm: "အဝတ်ပုံတင်ပါ" },
@@ -50,13 +69,6 @@ export const TRANSLATIONS: Translations = {
   masterPrompt: { en: "Master Prompt", mm: "အဓိက ညွှန်ကြားချက်" },
   copy: { en: "Copy", mm: "ကူးယူမည်" },
   copied: { en: "Copied!", mm: "ကူးယူပြီး!" },
-  
-  // General
-  next: { en: "Next", mm: "ရှေ့ဆက်" },
-  back: { en: "Back", mm: "ပြန်သွား" },
-  apiKeyLabel: { en: "Gemini API Key", mm: "Gemini API ကီး" },
-  apiKeyPlaceholder: { en: "Paste your API key here", mm: "API ကီးကို ဤနေရာတွင် ထည့်ပါ" },
-  required: { en: "Required", mm: "လိုအပ်သည်" },
 };
 
 export const KEYWORD_LABELS: { en: string[]; mm: string[] } = {
@@ -72,12 +84,7 @@ You MUST guide the user to decide on EACH of these specific categories:
 4. **Model Look** (Hairstyle, Makeup, Styling).
 5. **Accessories List** (MUST be detailed, e.g., 'Silver chunky chain', 'Black beanie', 'Leather wristband').
 6. **Pose & Composition** (e.g., Low angle, Wide shot, Dynamic movement).
-7. **Camera Specifications** (Lens mm, Film stock, Camera type - e.g., 'Shot on Sony A7R IV, 35mm lens, Kodak Portra 400 grain').
-
-**CRITICAL RULES:**
-- Be decisive. If suggesting options (e.g., 'Studio vs Street'), ask the user to PICK ONE immediately. Do not say 'both work'. Force a choice to ensure clarity.
-- Ensure every category above is covered before finishing.
-- Keep responses short, punchy, and professional.`;
+7. **Camera Specifications** (Lens mm, Film stock, Camera type - e.g., 'Shot on Sony A7R IV, 35mm lens, Kodak Portra 400 grain').`;
 
 export const SYSTEM_INSTRUCTION_MM = `သင်သည် တိကျပြတ်သားသော ဖက်ရှင်ဖန်တီးမှု ဒါရိုက်တာ (Creative Director) တစ်ဦးဖြစ်သည်။
 ဓာတ်ပုံရိုက်ကူးမှုအတွက် အောက်ပါအချက်များကို တစ်ခုချင်းစီ မဖြစ်မနေ ဆွေးနွေးဆုံးဖြတ်ပါ။
@@ -87,8 +94,4 @@ export const SYSTEM_INSTRUCTION_MM = `သင်သည် တိကျပြတ�
 ၄။ **ဆံပင်နှင့် မိတ်ကပ် (Hair & Look)**။
 ၅။ **အသုံးအဆောင်များ (Accessories List)** (အလွန်တိကျရမည်။ ဥပမာ - နာရီ၊ ဆွဲကြိုး၊ မျက်မှန်)။
 ၆။ **ပို့စ်နှင့် ဖွဲ့စည်းပုံ (Pose & Composition)**။
-၇။ **ကင်မရာ အသေးစိတ်** (Camera type, Lens mm, Film style - ဥပမာ - 35mm lens, vintage film grain)။
-
-**အထူးစည်းကမ်းချက်များ:**
-- ရွေးချယ်စရာ ၂ ခု (Option A or B) ပေးလျှင် တစ်ခုကို အတိအကျ ရွေးခိုင်းပါ။ 'နှစ်ခုလုံးကောင်းတယ်' ဟု ဝေဝါးသော အဖြေမပေးပါနှင့်။ တိကျသော ဆုံးဖြတ်ချက်ကို တောင်းဆိုပါ။
-- အထက်ပါအချက်များ ပြည့်စုံမှ ကျေနပ်ပါ။`;
+၇။ **ကင်မရာ အသေးစိတ်** (Camera type, Lens mm, Film style - ဥပမာ - 35mm lens, vintage film grain)။`;

@@ -12,12 +12,13 @@ export interface Message {
 export interface AppState {
   step: Step;
   apiKey: string;
+  proxyUrl: string; // New field for Myanmar proxy support
   garmentImage: string | null;
   gender: 'male' | 'female' | 'unisex' | null;
-  step2Tab: 'chat' | 'expert'; // New state for Step 2 separation
+  step2Tab: 'chat' | 'expert';
   chatHistory: Message[];
   pinterestKeywords: string[];
-  keywordImages: (string | null)[]; // Stores images for the 8 keyword categories
+  keywordImages: (string | null)[];
   poseRef: string | null;
   faceRef: string | null;
   bgRef: string | null;
@@ -27,7 +28,7 @@ export interface AppState {
   masterPrompt: string;
   error: string | null;
   isSettingsOpen: boolean;
-  loadingKeywordIndex: number | null; // Tracks which specific keyword is regenerating
+  loadingKeywordIndex: number | null;
 }
 
 export interface Translations {

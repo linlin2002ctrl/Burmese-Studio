@@ -2,10 +2,17 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { SYSTEM_INSTRUCTION_EN, SYSTEM_INSTRUCTION_MM, KEYWORD_LABELS } from "../constants";
 
-// Helper to delay execution for exponential backoff
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Robust retry wrapper for handling rate limits (429)
+// Helper to create client with the latest key from process.env and proxy settings
+const getGeminiClient = (proxyUrl?: string) => {
+  return new GoogleGenAI({ 
+    apiKey: process.env.API_KEY || "",
+    // @ts-ignore - Handle base URL for proxying
+    baseUrl: proxyUrl || undefined 
+  });
+};
+
 async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
   let lastError: any;
   for (let i = 0; i < maxRetries; i++) {
@@ -17,9 +24,7 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
       const isRateLimit = errorMsg.includes("429") || errorMsg.toLowerCase().includes("too many requests");
       
       if (isRateLimit && i < maxRetries - 1) {
-        // Wait longer each time: 2s, 5s...
-        const waitTime = Math.pow(2.5, i + 1) * 1000;
-        console.warn(`Rate limit hit. Retrying in ${waitTime}ms... (Attempt ${i + 1}/${maxRetries})`);
+        const waitTime = Math.pow(2, i + 1) * 1000;
         await delay(waitTime);
         continue;
       }
@@ -29,22 +34,16 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
   throw lastError;
 }
 
-const getAI = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
-};
-
 const handleGeminiError = (error: any): never => {
   console.error("Gemini API Error:", error);
   let message = error instanceof Error ? error.message : "An unknown error occurred.";
   
-  if (message.includes("403") || message.includes("API key")) {
-    message = "Access Denied: Invalid or restricted API Key. Please ensure you have selected a valid project key.";
-  } else if (message.includes("429")) {
-    message = "System Busy: Rate limit exceeded. We tried retrying, but the server is still busy. Please wait 60 seconds.";
-  } else if (message.includes("503") || message.includes("Overloaded")) {
-    message = "Gemini Service Overloaded. Please try again shortly.";
-  } else if (message.includes("SAFETY")) {
-    message = "Request blocked by AI safety filters. Please modify your input.";
+  if (message.includes("429")) {
+    message = "Rate Limit Exceeded: Please wait a moment or check your API quota.";
+  } else if (message.includes("403") || message.includes("API key")) {
+    message = "Authentication Failed: Please ensure you have selected a valid API key from a paid project.";
+  } else if (message.includes("Requested entity was not found")) {
+    message = "PROJECT_NOT_FOUND: Please select a valid project API key in settings.";
   }
 
   throw new Error(message);
@@ -53,9 +52,10 @@ const handleGeminiError = (error: any): never => {
 export const analyzeGarment = async (
   base64Image: string,
   language: 'en' | 'mm',
-  gender: 'male' | 'female' | 'unisex' | null
+  gender: 'male' | 'female' | 'unisex' | null,
+  proxyUrl?: string
 ) => {
-  const ai = getAI();
+  const ai = getGeminiClient(proxyUrl);
   const instruction = language === 'mm' ? SYSTEM_INSTRUCTION_MM : SYSTEM_INSTRUCTION_EN;
 
   let prompt = "";
@@ -68,9 +68,8 @@ export const analyzeGarment = async (
   }
 
   try {
-    // Use explicit GenerateContentResponse type to fix unknown property access
     const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: {
         parts: [
             { inlineData: { mimeType: "image/jpeg", data: base64Image } },
@@ -82,7 +81,6 @@ export const analyzeGarment = async (
         thinkingConfig: { thinkingBudget: 0 }
       }
     }));
-    // Property .text is correctly accessed as a getter
     return response.text;
   } catch (error) {
     handleGeminiError(error);
@@ -91,9 +89,10 @@ export const analyzeGarment = async (
 
 export const generateKeywords = async (
     chatHistory: { role: string; text: string }[],
-    language: 'en' | 'mm'
+    language: 'en' | 'mm',
+    proxyUrl?: string
   ) => {
-    const ai = getAI();
+    const ai = getGeminiClient(proxyUrl);
     const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join('\n');
     const prompt = `Based on the following conversation about a fashion shoot, generate a highly specific Pinterest search query (English) for EACH of the following 8 categories.
     
@@ -105,9 +104,8 @@ export const generateKeywords = async (
     Return ONLY a JSON array of 8 strings.`;
   
     try {
-      // Use explicit GenerateContentResponse type to fix unknown property access
       const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3-pro-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -117,10 +115,8 @@ export const generateKeywords = async (
           }
         }
       }));
-      // Access text property directly from GenerateContentResponse
       return JSON.parse(response.text || "[]");
     } catch (error: any) {
-      console.warn("Keywords Error:", error);
       return ["Model Pose", "Model Face", "Hairstyle", "Background", "Vibe", "Shoot Location", "Lighting", "Composition"];
     }
   };
@@ -128,19 +124,18 @@ export const generateKeywords = async (
 export const regenerateSingleKeyword = async (
   chatHistory: { role: string; text: string }[],
   category: string,
-  currentKeyword: string
+  currentKeyword: string,
+  proxyUrl?: string
 ) => {
-  const ai = getAI();
+  const ai = getGeminiClient(proxyUrl);
   const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join('\n');
   const prompt = `Generate a NEW alternative Pinterest keyword for "${category}" based on this context: ${historyText}. Current: ${currentKeyword}. Return string only.`;
 
   try {
-    // Use explicit GenerateContentResponse type to fix unknown property access
     const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: prompt,
     }));
-    // Access text property directly from GenerateContentResponse
     return response.text?.trim() || currentKeyword;
   } catch (error) {
     return currentKeyword;
@@ -149,21 +144,20 @@ export const regenerateSingleKeyword = async (
 
 export const summarizeChat = async (
   chatHistory: { role: string; text: string }[],
-  language: 'en' | 'mm'
+  language: 'en' | 'mm',
+  proxyUrl?: string
 ) => {
-  const ai = getAI();
+  const ai = getGeminiClient(proxyUrl);
   const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join('\n');
   const instruction = language === 'mm' 
     ? "အတည်ပြုပြီးသော အချက်လက်များကိုသာ စာရင်းပြုစုပေးပါ။"
     : "Summarize ONLY the final confirmed decisions for Vibe, Location, Model, Styling, etc.";
 
   try {
-    // Use explicit GenerateContentResponse type to fix unknown property access
     const response: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: `Conversation History:\n${historyText}\n\nTask: ${instruction}`,
     }));
-    // Access text property directly from GenerateContentResponse
     return response.text;
   } catch (error) {
     return "Failed to summarize.";
@@ -175,48 +169,47 @@ export const generateFashionImage = async (
   keywordImages: (string | null)[],
   accessories: string,
   keywords: string[],
-  chatContext: string
+  chatContext: string,
+  proxyUrl?: string
 ) => {
-  const ai = getAI();
+  const ai = getGeminiClient(proxyUrl);
   
-  // Prepare contents for text model
   const textParts: any[] = [{ inlineData: { mimeType: "image/jpeg", data: garment } }];
   keywordImages.forEach((img) => { if (img) textParts.push({ inlineData: { mimeType: "image/jpeg", data: img } }); });
   
   const structureInstruction = `Generate a Master Prompt for this shoot: Subject details, Outfit styling, Setting/Background, and Vibe/Camera style. Context: ${chatContext}. Accessories: ${accessories}.`;
   textParts.push({ text: structureInstruction });
 
-  // Prepare contents for image model
   const imageParts: any[] = [
     { text: "MAIN SUBJECT CLOTHING (Must wear this):" },
     { inlineData: { mimeType: "image/jpeg", data: garment } }
   ];
   keywordImages.forEach((img, idx) => { if (img) imageParts.push({ text: `Ref: ${KEYWORD_LABELS['en'][idx]}`, inlineData: { mimeType: "image/jpeg", data: img } }); });
-  imageParts.push({ text: `Generate a photorealistic fashion editorial. Style: ${chatContext}. Accessories: ${accessories}.` });
+  imageParts.push({ text: `Generate a photorealistic fashion editorial. Style: ${chatContext}. Accessories: ${accessories}. 2K Resolution, high quality.` });
 
   try {
-    // Run sequentially with slight delay to avoid bursting quota limits
-    // Explicitly typing textResponse as GenerateContentResponse
     const textResponse: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3-pro-preview",
         contents: { parts: textParts },
     }));
 
-    // Small staggered delay to prevent immediate 429 on free tier
-    await delay(1000);
+    await delay(2000); 
 
-    // Explicitly typing imageResponse as GenerateContentResponse
     const imageResponse: GenerateContentResponse = await callWithRetry(() => ai.models.generateContent({
-        model: "gemini-2.5-flash-image",
+        model: "gemini-3-pro-image-preview",
         contents: { parts: imageParts },
+        config: {
+          imageConfig: {
+            aspectRatio: "3:4",
+            imageSize: "2K"
+          }
+        }
     }));
     
     let finalImageBase64 = null;
-    // Fix candidates access on unknown type error
     const candidates = imageResponse.candidates;
     if (candidates?.[0]?.content?.parts) {
         for (const part of candidates[0].content.parts) {
-            // Find the image part as per guidelines
             if (part.inlineData) {
                 finalImageBase64 = part.inlineData.data;
                 break;
@@ -227,7 +220,6 @@ export const generateFashionImage = async (
 
     return {
         image: finalImageBase64,
-        // Access text property directly from GenerateContentResponse
         prompt: textResponse.text?.trim() || "N/A"
     };
 
